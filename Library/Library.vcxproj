@@ -31,6 +31,7 @@
     <ClInclude Include="src\Vector2.h" />
     <ClInclude Include="src\Vector3.h" />
     <ClInclude Include="src\Vector4.h" />
+    <ClInclude Include="src\Vector2i.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Matrix.cpp" />
@@ -39,6 +40,7 @@
     <ClCompile Include="src\Vector2.cpp" />
     <ClCompile Include="src\Vector3.cpp" />
     <ClCompile Include="src\Vector4.cpp" />
+    <ClCompile Include="src\Vector2i.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

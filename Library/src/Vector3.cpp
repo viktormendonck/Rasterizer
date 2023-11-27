@@ -20,6 +20,8 @@ namespace dae {
 
 	Vector3::Vector3(const Vector3& from, const Vector3& to) : x(to.x - from.x), y(to.y - from.y), z(to.z - from.z){}
 
+	
+
 	float Vector3::Magnitude() const
 	{
 		return sqrtf(x * x + y * y + z * z);
@@ -73,6 +75,11 @@ namespace dae {
 	Vector3 Vector3::Reflect(const Vector3& v1, const Vector3& v2)
 	{
 		return v1 - (2.f * Vector3::Dot(v1, v2) * v2);
+	}
+
+	Vector2 Vector3::ToVector2() const
+	{
+		return Vector2(x,y);
 	}
 
 	Vector4 Vector3::ToPoint4() const

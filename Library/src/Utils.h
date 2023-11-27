@@ -10,6 +10,28 @@ namespace dae
 {
 	namespace Utils
 	{
+		inline bool IsInTriangle(const Vector2& pos, const Vector3& p0, const Vector3& p1, const Vector3& p2, Vector3& weights)
+		{
+			const float triArea{ std::abs(Vector2::Cross((p1 - p0).ToVector2(),( p2 - p0).ToVector2()))};
+
+			weights.x = std::abs(Vector2::Cross(pos - p1.ToVector2(), (p2 - p1).ToVector2()));
+			weights.y = std::abs(Vector2::Cross(pos - p2.ToVector2(), (p0 - p2).ToVector2()));
+			weights.z = std::abs(Vector2::Cross(pos - p0.ToVector2(), (p1 - p0).ToVector2()));
+
+			const float totalArea{ weights.x+weights.y+weights.z };
+			weights /= totalArea;
+			return { AreEqual(totalArea, triArea, 1.f)};
+			
+		}
+		inline bool IsInTriangle(const Vector2& pos, const Vector3& p0, const Vector3& p1, const Vector3& p2)
+		{
+			Vector3 temp;
+			return IsInTriangle(pos, p0, p1, p2, temp);
+
+		}
+
+
+
 		//Just parses vertices and indices
 #pragma warning(push)
 #pragma warning(disable : 4505) //Warning unreferenced local function

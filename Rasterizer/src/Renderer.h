@@ -3,7 +3,9 @@
 #include <cstdint>
 #include <vector>
 
+
 #include "Camera.h"
+#include "DataTypes.h"
 
 struct SDL_Window;
 struct SDL_Surface;
@@ -31,34 +33,36 @@ namespace dae
 		void Render();
 
 		bool SaveBufferToImage() const;
+		Vector3 NdcToScreen(Vector3 ndc) const;
 
-		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
+		private:
 
-	private:
-
-		
-		void NDCtoScreen(std::vector<Vertex>& vertices);
-		float TriArea(const Vector3& p1, const Vector3& p2, const Vector3& p3);
-		bool IsPointInTriangle(const Vector2& pos, const std::vector<Vertex>& triVertices);
+		void WorldToView(const std::vector<Mesh>& inVertices, std::vector<Mesh>& outVertices) const;
 		SDL_Window* m_pWindow{};
 
 		SDL_Surface* m_pFrontBuffer{ nullptr };
 		SDL_Surface* m_pBackBuffer{ nullptr };
 		uint32_t* m_pBackBufferPixels{};
 
-		//float* m_pDepthBufferPixels{};
+		float* m_pDepthBufferPixels{};
 
-		std::vector<Vertex> m_TriNDC{
-			{{0.f,.5f,1.f}},
-			{{.5f,-.5f,1.f}},
-			{{-.5f,-.5f,1.f}}
+		
+		std::vector<Vertex> m_WorldVertices{
+			dae::Vertex{Vector3{-3.f, 3.f,-2.f},dae::colors::White},
+			dae::Vertex{Vector3{ 0.f, 3.f,-2.f},dae::colors::White},
+			dae::Vertex{Vector3{ 3.f, 3.f,-2.f},dae::colors::White},
+			dae::Vertex{Vector3{-3.f, 0.f,-2.f},dae::colors::White},
+			dae::Vertex{Vector3{ 0.f, 0.f,-2.f},dae::colors::White},
+			dae::Vertex{Vector3{ 3.f, 0.f,-2.f},dae::colors::White},
+			dae::Vertex{Vector3{-3.f,-3.f,-2.f},dae::colors::White},
+			dae::Vertex{Vector3{ 0.f,-3.f,-2.f},dae::colors::White},
+			dae::Vertex{Vector3{ 3.f,-3.f,-2.f},dae::colors::White}
 		};
 
 		Camera m_Camera{};
 
 		int m_Width{};
 		int m_Height{};
-		int m_FOV{90};
 		float m_Ar{};
 	};
 }
