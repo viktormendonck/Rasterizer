@@ -13,7 +13,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Resources\uv_grid.png" />
+    <Image Include="Resources\tuktuk.png" />
     <Image Include="Resources\uv_grid_2.png" />
   </ItemGroup>
 </Project>

@@ -47,10 +47,13 @@ namespace dae
 
 		float* m_pDepthBufferPixels{};
 		std::vector<Material> m_Materials{};
-
-		std::vector<Mesh> m_Meshes{
+		std::vector<Mesh> m_Meshes{};
+	
+		enum class RenderMode {
+			standard, depth
 		};
-		
+			
+		RenderMode m_CurrentRenderMode{ RenderMode::standard };
 
 		Camera m_Camera{};
 

@@ -30,8 +30,14 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
 
 
-
-
+	
+	//m_Meshes.push_back(
+	//	Mesh{
+	//		{},{},PrimitiveTopology::TriangleList,AddMaterial("Resources/tuktuk.png")
+	//	}
+	//);
+	//
+	//Utils::ParseOBJ("Resources/tuktuk.obj", m_Meshes[0].vertices,m_Meshes[0].indices);
 
 	m_Meshes.push_back(
 		Mesh{
@@ -46,19 +52,19 @@ Renderer::Renderer(SDL_Window* pWindow) :
 			Vertex{{ 0.f,-3.f,-2.f},{.5f,1.f}},
 			Vertex{{ 3.f,-3.f,-2.f},{1.f,1.f}}
 		},
-
+	
 		//{3,0,4,1,5,2,2,6,6,3,7,4,8,5}, 
 		//PrimitiveTopology::TriangleStrip
-
+	
 		{
 			3,0,1,	1,4,3,	4,1,2,
 			2,5,4,	6,3,4,	4,7,6,
 			7,4,5,	5,8,7
 		},
 		PrimitiveTopology::TriangleList,
-
+	
 		AddMaterial("Resources/uv_grid_2.png")
-
+	
 		}
 	);
 }
@@ -181,14 +187,20 @@ void Renderer::Render()
 
 						if (m_pDepthBufferPixels[pixelIdx] < hitDepth) { continue; }
 						else { m_pDepthBufferPixels[pixelIdx] = hitDepth; }
-
-						const Vector2 uv{(
-								v0.uv / v0.position.z * weights.x +
-								v1.uv / v1.position.z * weights.y +
-								v2.uv / v2.position.z * weights.z)*hitDepth
-						};
-						finalColor = m_Materials[screenMesh.materialId].pTexture->Sample(uv);
-						finalColor.MaxToOne();
+						switch (m_CurrentRenderMode) {
+						case(RenderMode::standard): {
+							const Vector2 uv{ (
+							v0.uv / v0.position.z * weights.x +
+							v1.uv / v1.position.z * weights.y +
+							v2.uv / v2.position.z * weights.z) * hitDepth
+							};
+							finalColor = m_Materials[screenMesh.materialId].pTexture->Sample(uv);
+							finalColor.MaxToOne();
+							break; }
+						case(RenderMode::depth):
+							//finalColor = ColorRGB{ hitDepth,hitDepth,hitDepth };
+							break;
+						}
 
 						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
 							static_cast<uint8_t>(finalColor.r * 255),
@@ -237,7 +249,7 @@ void dae::Renderer::WorldToScreen(std::vector<Mesh>& mesh) const
 			projectedY /= m_Camera.fov;
 
 			const Vector4 projected{ projectedX, projectedY, view.z, 0 };
-			temp.push_back(Vertex_Out(NdcToScreen(projected), mesh[meshIdx].vertices[vertexIdx].uv, mesh[meshIdx].vertices[vertexIdx].color));
+			temp.push_back(Vertex_Out(NdcToScreen(projected), mesh[meshIdx].vertices[vertexIdx].uv, mesh[meshIdx].vertices[vertexIdx].normal, mesh[meshIdx].vertices[vertexIdx].tangent, mesh[meshIdx].vertices[vertexIdx].viewDirection,mesh[meshIdx].vertices[vertexIdx].color));
 		}
 		mesh[meshIdx].vertices_out = temp;
 	}
