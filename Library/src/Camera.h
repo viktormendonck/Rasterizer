@@ -22,8 +22,10 @@ namespace dae
 		Vector3 origin{};
 		float fovAngle{90.f};
 		float fov{ tanf((fovAngle * TO_RADIANS) / 2.f) };
-		float speed = 3.f;
-		float mouseSpeed = .5f;
+		float speed{ 3.f };
+		float mouseSpeed{ .5f };
+		float near{ 1 };
+		float far{ 1000 };
 
 		Vector3 forward{Vector3::UnitZ};
 		Vector3 up{Vector3::UnitY};
@@ -93,6 +95,9 @@ namespace dae
 			{
 				origin -= speed * deltaTime * right;
 			}
+			//if (pKeyboardState[SDL_SCANCODE_P]) {
+			//	totalYaw += PI;
+			//}
 			//mouse controlls
 			bool leftMouse{ (mouseState & SDL_BUTTON(1)) != 0 };
 			bool rightMouse{ (mouseState & SDL_BUTTON(3)) != 0 };

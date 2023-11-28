@@ -30,6 +30,7 @@ namespace dae
 
 	ColorRGB Texture::Sample(const Vector2& uv) const
 	{
+		if (uv.x >= 1 || uv.x <= 0 || uv.y >= 1 || uv.y <= 0) return ColorRGB{};
 		int x{ static_cast<int>(uv.x * m_pSurface->w) };
 		int y{ static_cast<int>(uv.y * m_pSurface->h) };
 

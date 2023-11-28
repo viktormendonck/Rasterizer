@@ -30,8 +30,7 @@ namespace dae
 
 		}
 		inline float Remap(float oldMin, float oldMax, float newMin, float newMax, float oldVal) {
-			return ((oldVal-oldMin)/ (oldMax - oldMin) / (newMax - newMin)) + newMin;
-		}
+			return ((oldVal-oldMin)/ (oldMax - oldMin) / (newMax - newMin)) + newMin;		}
 
 
 #pragma warning(push)

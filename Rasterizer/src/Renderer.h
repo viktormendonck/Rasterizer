@@ -53,7 +53,7 @@ namespace dae
 			standard, depth
 		};
 			
-		RenderMode m_CurrentRenderMode{ RenderMode::standard };
+		RenderMode m_CurrentRenderMode{ RenderMode::standard};
 
 		Camera m_Camera{};
 

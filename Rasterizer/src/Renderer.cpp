@@ -27,46 +27,49 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
 	//Initialize Camera
-	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
+	m_Camera.Initialize(60.f, { .0f,5.0f,-30.f });
+	
 
 
 	
-	//m_Meshes.push_back(
-	//	Mesh{
-	//		{},{},PrimitiveTopology::TriangleList,AddMaterial("Resources/tuktuk.png")
-	//	}
-	//);
-	//
-	//Utils::ParseOBJ("Resources/tuktuk.obj", m_Meshes[0].vertices,m_Meshes[0].indices);
-
 	m_Meshes.push_back(
 		Mesh{
-		{
-			Vertex{{-3.f, 3.f,-2.f},{0.f,0.f}},
-			Vertex{{ 0.f, 3.f,-2.f},{.5f,0.f}},
-			Vertex{{ 3.f, 3.f,-2.f},{1.f,0.f}},
-			Vertex{{-3.f, 0.f,-2.f},{0.f,.5f}},
-			Vertex{{ 0.f, 0.f,-2.f},{.5f,.5f}},
-			Vertex{{ 3.f, 0.f,-2.f},{1.f,.5f}},
-			Vertex{{-3.f,-3.f,-2.f},{0.f,1.f}},
-			Vertex{{ 0.f,-3.f,-2.f},{.5f,1.f}},
-			Vertex{{ 3.f,-3.f,-2.f},{1.f,1.f}}
-		},
-	
-		//{3,0,4,1,5,2,2,6,6,3,7,4,8,5}, 
-		//PrimitiveTopology::TriangleStrip
-	
-		{
-			3,0,1,	1,4,3,	4,1,2,
-			2,5,4,	6,3,4,	4,7,6,
-			7,4,5,	5,8,7
-		},
-		PrimitiveTopology::TriangleList,
-	
-		AddMaterial("Resources/uv_grid_2.png")
-	
+			{},{},PrimitiveTopology::TriangleList,AddMaterial("Resources/tuktuk.png")
 		}
 	);
+	
+	Utils::ParseOBJ("Resources/tuktuk.obj", m_Meshes[0].vertices,m_Meshes[0].indices);
+
+	//m_Meshes.push_back(
+	//	Mesh{
+	//	{
+	//		Vertex{{-3.f, 3.f,-2.f},{0.f,0.f}},
+	//		Vertex{{ 0.f, 3.f,-2.f},{.5f,0.f}},
+	//		Vertex{{ 3.f, 3.f,-2.f},{1.f,0.f}},
+	//		Vertex{{-3.f, 0.f,-2.f},{0.f,.5f}},
+	//		Vertex{{ 0.f, 0.f,-2.f},{.5f,.5f}},
+	//		Vertex{{ 3.f, 0.f,-2.f},{1.f,.5f}},
+	//		Vertex{{-3.f,-3.f,-2.f},{0.f,1.f}},
+	//		Vertex{{ 0.f,-3.f,-2.f},{.5f,1.f}},
+	//		Vertex{{ 3.f,-3.f,-2.f},{1.f,1.f}}
+	//	},
+	//
+	//	//{3,0,4,1,5,2,2,6,6,3,7,4,8,5}, 
+	//	//PrimitiveTopology::TriangleStrip
+	//
+	//	{
+	//		3,0,1,	1,4,3,	4,1,2,
+	//		2,5,4,	6,3,4,	4,7,6,
+	//		7,4,5,	5,8,7
+	//	},
+	//	PrimitiveTopology::TriangleList,
+	//
+	//	AddMaterial("Resources/uv_grid_2.png"),
+	//	{},
+	//	//Matrix{Matrix::CreateTranslation(Vector3{0,0,0})}
+	//
+	//	}
+	//);
 }
 
 Renderer::~Renderer()
@@ -80,7 +83,9 @@ Renderer::~Renderer()
 
 void Renderer::Update(Timer* pTimer)
 {
+	const float deltaTime{ pTimer->GetElapsed() };
 	m_Camera.Update(pTimer);
+	m_Meshes[0].worldMatrix *= Matrix::CreateRotationY(deltaTime * PI);
 }
 
 void Renderer::Render()
@@ -102,20 +107,21 @@ void Renderer::Render()
 	
 		SDL_FillRect(m_pBackBuffer, nullptr, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
 		//logic for topology
-		int itterationAmnt{};
+		int iteration{};
 		size_t amntOfChecks{};
+
 		if (screenMesh.primitiveTopology == PrimitiveTopology::TriangleList) 
 		{
-			itterationAmnt = 3;
+			iteration = 3;
 			amntOfChecks = screenMesh.indices.size();
 		}
 		else 
 		{
-			itterationAmnt = 1;
+			iteration = 1;
 			amntOfChecks = screenMesh.indices.size() - 2;
 		}
 
-		for (size_t triIdx = 0; triIdx < amntOfChecks; triIdx += itterationAmnt)
+		for (size_t triIdx = 0; triIdx < amntOfChecks; triIdx += iteration)
 		{
 			int idx0{ static_cast<int>(triIdx) + 0 };
 			int idx1{ static_cast<int>(triIdx) + 1 };
@@ -132,9 +138,9 @@ void Renderer::Render()
 			const Vertex_Out& v2 = screenMesh.vertices_out[screenMesh.indices[idx2]];
 
 			//check if tri is behind you
-			if (v0.position.z <= 0 ||
-				v1.position.z <= 0 ||
-				v2.position.z <= 0)
+			if (v0.position.z < 0 || v0.position.z > 1 ||
+				v1.position.z < 0 || v1.position.z > 1 ||
+				v2.position.z < 0 || v2.position.z > 1)
 			{
 				continue;
 			}
@@ -177,28 +183,38 @@ void Renderer::Render()
 					if (dae::Utils::IsInTriangle(pos.toVector2(), v0.position, v1.position, v2.position, weights))
 					{
 						int pixelIdx{ px + py * m_Width };
-						const float hitDepth{
+						const float linearHitDepth{
 							1.f / ( 
-								  1.f / v0.position.z * weights.x +
-								  1.f / v1.position.z * weights.y +
-								  1.f / v2.position.z * weights.z
+								  1.f / v0.position.w * weights.x +
+								  1.f / v1.position.w * weights.y +
+								  1.f / v2.position.w * weights.z
 								  )
 						};
 
-						if (m_pDepthBufferPixels[pixelIdx] < hitDepth) { continue; }
-						else { m_pDepthBufferPixels[pixelIdx] = hitDepth; }
+						if (m_pDepthBufferPixels[pixelIdx] < linearHitDepth) { continue; }
+						else { m_pDepthBufferPixels[pixelIdx] = linearHitDepth; }
 						switch (m_CurrentRenderMode) {
 						case(RenderMode::standard): {
+
 							const Vector2 uv{ (
-							v0.uv / v0.position.z * weights.x +
-							v1.uv / v1.position.z * weights.y +
-							v2.uv / v2.position.z * weights.z) * hitDepth
+							v0.uv / v0.position.w * weights.x +
+							v1.uv / v1.position.w * weights.y +
+							v2.uv / v2.position.w * weights.z) * linearHitDepth
 							};
 							finalColor = m_Materials[screenMesh.materialId].pTexture->Sample(uv);
 							finalColor.MaxToOne();
 							break; }
 						case(RenderMode::depth):
-							//finalColor = ColorRGB{ hitDepth,hitDepth,hitDepth };
+							float nonLinearHitDepth{
+								1.f / (
+									  1.f / v0.position.z * weights.x +
+									  1.f / v1.position.z * weights.y +
+									  1.f / v2.position.z * weights.z
+									  )
+							};
+							nonLinearHitDepth = Utils::Remap(0.995f,1.f,0.f,1.f, nonLinearHitDepth);
+							finalColor = ColorRGB{ nonLinearHitDepth,nonLinearHitDepth,nonLinearHitDepth };
+							finalColor.MaxToOne();
 							break;
 						}
 
@@ -210,7 +226,6 @@ void Renderer::Render()
 				}
 			}
 		}
-
 	}
 	//@END
 	//Update SDL Surface
@@ -236,20 +251,23 @@ bool Renderer::SaveBufferToImage() const
 void dae::Renderer::WorldToScreen(std::vector<Mesh>& mesh) const
 {
 	const float aspectRatio = static_cast<float>(m_Width) / static_cast<float>(m_Height);
+	const Matrix projectionMatrix{ 
+		Matrix(	Vector4(1 / (aspectRatio * m_Camera.fov) , 0 , 0 , 0),
+				Vector4(0 , 1 / m_Camera.fov , 0 , 0),
+				Vector4(0 , 0	, m_Camera.far / (m_Camera.far - m_Camera.near), 1),
+				Vector4(0 , 0	, -(m_Camera.far * m_Camera.near) / (m_Camera.far - m_Camera.near) , 0))};
 	for (size_t meshIdx{}; meshIdx < mesh.size(); meshIdx++)
 	{
 		std::vector<Vertex_Out> temp{};
 		for (size_t vertexIdx{}; vertexIdx < mesh[meshIdx].vertices.size(); vertexIdx++)
 		{
-			const Vector3 view{ m_Camera.viewMatrix.TransformPoint(mesh[meshIdx].vertices[vertexIdx].position)};
+			const Matrix wvp{ mesh[meshIdx].worldMatrix * m_Camera.viewMatrix * projectionMatrix };
+			Vector4 projectedView{ wvp.TransformPoint({mesh[meshIdx].vertices[vertexIdx].position,1}) };
+			projectedView.x /= projectedView.w;
+			projectedView.y /= projectedView.w;
+			projectedView.z /= projectedView.w;
 
-			float projectedX{ view.x / view.z };
-			float projectedY{ view.y / view.z };
-			projectedX /= (aspectRatio * m_Camera.fov);
-			projectedY /= m_Camera.fov;
-
-			const Vector4 projected{ projectedX, projectedY, view.z, 0 };
-			temp.push_back(Vertex_Out(NdcToScreen(projected), mesh[meshIdx].vertices[vertexIdx].uv, mesh[meshIdx].vertices[vertexIdx].normal, mesh[meshIdx].vertices[vertexIdx].tangent, mesh[meshIdx].vertices[vertexIdx].viewDirection,mesh[meshIdx].vertices[vertexIdx].color));
+			temp.push_back(Vertex_Out(NdcToScreen(projectedView), mesh[meshIdx].vertices[vertexIdx].uv, mesh[meshIdx].vertices[vertexIdx].normal, mesh[meshIdx].vertices[vertexIdx].tangent, mesh[meshIdx].vertices[vertexIdx].viewDirection,mesh[meshIdx].vertices[vertexIdx].color));
 		}
 		mesh[meshIdx].vertices_out = temp;
 	}
