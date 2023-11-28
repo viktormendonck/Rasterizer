@@ -29,10 +29,11 @@ namespace dae
 			return IsInTriangle(pos, p0, p1, p2, temp);
 
 		}
+		inline float Remap(float oldMin, float oldMax, float newMin, float newMax, float oldVal) {
+			return ((oldVal-oldMin)/ (oldMax - oldMin) / (newMax - newMin)) + newMin;
+		}
 
 
-
-		//Just parses vertices and indices
 #pragma warning(push)
 #pragma warning(disable : 4505) //Warning unreferenced local function
 		static bool ParseOBJ(const std::string& filename, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, bool flipAxisAndWinding = true)

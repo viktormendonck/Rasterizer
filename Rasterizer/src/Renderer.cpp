@@ -7,6 +7,7 @@
 #include "Maths.h"
 #include "Texture.h"
 #include "Utils.h"
+#include <iostream>
 #define triangleStrip
 
 
@@ -27,11 +28,48 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
 	//Initialize Camera
 	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
+
+
+
+
+
+	m_Meshes.push_back(
+		Mesh{
+		{
+			Vertex{{-3.f, 3.f,-2.f},{0.f,0.f}},
+			Vertex{{ 0.f, 3.f,-2.f},{.5f,0.f}},
+			Vertex{{ 3.f, 3.f,-2.f},{1.f,0.f}},
+			Vertex{{-3.f, 0.f,-2.f},{0.f,.5f}},
+			Vertex{{ 0.f, 0.f,-2.f},{.5f,.5f}},
+			Vertex{{ 3.f, 0.f,-2.f},{1.f,.5f}},
+			Vertex{{-3.f,-3.f,-2.f},{0.f,1.f}},
+			Vertex{{ 0.f,-3.f,-2.f},{.5f,1.f}},
+			Vertex{{ 3.f,-3.f,-2.f},{1.f,1.f}}
+		},
+
+		//{3,0,4,1,5,2,2,6,6,3,7,4,8,5}, 
+		//PrimitiveTopology::TriangleStrip
+
+		{
+			3,0,1,	1,4,3,	4,1,2,
+			2,5,4,	6,3,4,	4,7,6,
+			7,4,5,	5,8,7
+		},
+		PrimitiveTopology::TriangleList,
+
+		AddMaterial("Resources/uv_grid_2.png")
+
+		}
+	);
 }
 
 Renderer::~Renderer()
 {
 	delete[] m_pDepthBufferPixels;
+	for (const Material& mat : m_Materials)
+	{
+		delete mat.pTexture;
+	}
 }
 
 void Renderer::Update(Timer* pTimer)
@@ -43,55 +81,32 @@ void Renderer::Render()
 {
 	//@START
 	//Lock BackBuffer
+
 	SDL_LockSurface(m_pBackBuffer);
 
 	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
 
 	m_Ar = static_cast<float>(m_Width) / static_cast<float>(m_Height);
 
-	std::vector<Mesh> worldMeshes{
-		Mesh{{
-			Vertex{{-3.f, 3.f,-2.f}},
-			Vertex{{ 0.f, 3.f,-2.f}},
-			Vertex{{ 3.f, 3.f,-2.f}},
-			Vertex{{-3.f, 0.f,-2.f}},
-			Vertex{{ 0.f, 0.f,-2.f}},
-			Vertex{{ 3.f, 0.f,-2.f}},
-			Vertex{{-3.f,-3.f,-2.f}},
-			Vertex{{ 0.f,-3.f,-2.f}},
-			Vertex{{ 3.f,-3.f,-2.f}}},
-			//{3,0,4,1,5,2,2,6,6,3,7,4,8,5}, // triangleStripIndices
-			//PrimitiveTopology::TriangleStrip
-			{
-			 3,0,1,  1,4,3,  4,1,2,
-			 2,5,4,  6,3,4,  4,7,6,
-			 7,4,5,  5,8,7
-			},
-			PrimitiveTopology::TriangleList
-		}
-	};
-
-	std::vector<Mesh> screenMeshes{};
-	WorldToView(worldMeshes, screenMeshes);
-	for (const Mesh& worldMesh : screenMeshes)
+	WorldToScreen(m_Meshes);
+	for (const Mesh& screenMesh : m_Meshes)
 	{
 		//RENDER LOGIC
-
 		const size_t screenPixels{ static_cast<size_t>(m_Width * m_Height) };
 	
 		SDL_FillRect(m_pBackBuffer, nullptr, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
 		//logic for topology
 		int itterationAmnt{};
 		size_t amntOfChecks{};
-		if (worldMesh.primitiveTopology == PrimitiveTopology::TriangleList) 
+		if (screenMesh.primitiveTopology == PrimitiveTopology::TriangleList) 
 		{
 			itterationAmnt = 3;
-			amntOfChecks = worldMesh.indices.size();
+			amntOfChecks = screenMesh.indices.size();
 		}
 		else 
 		{
 			itterationAmnt = 1;
-			amntOfChecks = worldMesh.indices.size() - 2;
+			amntOfChecks = screenMesh.indices.size() - 2;
 		}
 
 		for (size_t triIdx = 0; triIdx < amntOfChecks; triIdx += itterationAmnt)
@@ -100,15 +115,15 @@ void Renderer::Render()
 			int idx1{ static_cast<int>(triIdx) + 1 };
 			int idx2{ static_cast<int>(triIdx) + 2 };
 
-			if (worldMesh.primitiveTopology == PrimitiveTopology::TriangleStrip) {
+			if (screenMesh.primitiveTopology == PrimitiveTopology::TriangleStrip) {
 				if (triIdx % 2 != 0) {
 					std::swap(idx0, idx2);
 				}
 			}
 
-			const Vertex& v0 = worldMesh.vertices[worldMesh.indices[idx0]];
-			const Vertex& v1 = worldMesh.vertices[worldMesh.indices[idx1]];
-			const Vertex& v2 = worldMesh.vertices[worldMesh.indices[idx2]];
+			const Vertex_Out& v0 = screenMesh.vertices_out[screenMesh.indices[idx0]];
+			const Vertex_Out& v1 = screenMesh.vertices_out[screenMesh.indices[idx1]];
+			const Vertex_Out& v2 = screenMesh.vertices_out[screenMesh.indices[idx2]];
 
 			//check if tri is behind you
 			if (v0.position.z <= 0 ||
@@ -128,6 +143,11 @@ void Renderer::Render()
 				static_cast<int>(std::max(std::max(v0.position.x, v1.position.x), v2.position.x)),
 				static_cast<int>(std::max(std::max(v0.position.y, v1.position.y), v2.position.y))
 			};
+			topLeft.x -= 1;
+			topLeft.y -= 1;
+			bottomRight.x += 1;
+			bottomRight.y += 1;
+
 			topLeft.x = std::max(topLeft.x, 0);
 			topLeft.x = std::min(topLeft.x, m_Width);
 			topLeft.y = std::max(topLeft.y, 0);
@@ -152,20 +172,22 @@ void Renderer::Render()
 					{
 						int pixelIdx{ px + py * m_Width };
 						const float hitDepth{
-							v0.position.z * weights.x +
-							v1.position.z * weights.y +
-							v2.position.z * weights.z
+							1.f / ( 
+								  1.f / v0.position.z * weights.x +
+								  1.f / v1.position.z * weights.y +
+								  1.f / v2.position.z * weights.z
+								  )
 						};
 
 						if (m_pDepthBufferPixels[pixelIdx] < hitDepth) { continue; }
 						else { m_pDepthBufferPixels[pixelIdx] = hitDepth; }
 
-						finalColor = {
-							v0.color * weights.x +
-							v1.color * weights.y +
-							v2.color * weights.z
+						const Vector2 uv{(
+								v0.uv / v0.position.z * weights.x +
+								v1.uv / v1.position.z * weights.y +
+								v2.uv / v2.position.z * weights.z)*hitDepth
 						};
-
+						finalColor = m_Materials[screenMesh.materialId].pTexture->Sample(uv);
 						finalColor.MaxToOne();
 
 						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
@@ -178,7 +200,6 @@ void Renderer::Render()
 		}
 
 	}
-
 	//@END
 	//Update SDL Surface
 	SDL_UnlockSurface(m_pBackBuffer);
@@ -186,12 +207,13 @@ void Renderer::Render()
 	SDL_UpdateWindowSurface(m_pWindow);
 }
 
-Vector3 dae::Renderer::NdcToScreen(Vector3 ndc) const
+Vector4 dae::Renderer::NdcToScreen(Vector4 ndc) const
 {
 	ndc.x = (ndc.x + 1) / 2 * m_Width;
 	ndc.y = (1 - ndc.y) / 2 * m_Height;
 	return ndc;
 }
+
 bool Renderer::SaveBufferToImage() const
 {
 	return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
@@ -199,28 +221,35 @@ bool Renderer::SaveBufferToImage() const
 
 
 
-void dae::Renderer::WorldToView(const std::vector<Mesh>& inMesh, std::vector<Mesh>& outMesh) const
+void dae::Renderer::WorldToScreen(std::vector<Mesh>& mesh) const
 {
 	const float aspectRatio = static_cast<float>(m_Width) / static_cast<float>(m_Height);
-
-	outMesh.reserve(inMesh.size());
-	for (size_t meshIdx{}; meshIdx < inMesh.size(); meshIdx++)
+	for (size_t meshIdx{}; meshIdx < mesh.size(); meshIdx++)
 	{
-		std::vector<Vertex> temp{};
-		for (size_t vertexIdx{}; vertexIdx < inMesh[meshIdx].vertices.size(); vertexIdx++)
+		std::vector<Vertex_Out> temp{};
+		for (size_t vertexIdx{}; vertexIdx < mesh[meshIdx].vertices.size(); vertexIdx++)
 		{
-			const Vector3 view{ m_Camera.viewMatrix.TransformPoint(inMesh[meshIdx].vertices[vertexIdx].position)};
+			const Vector3 view{ m_Camera.viewMatrix.TransformPoint(mesh[meshIdx].vertices[vertexIdx].position)};
 
 			float projectedX{ view.x / view.z };
 			float projectedY{ view.y / view.z };
 			projectedX /= (aspectRatio * m_Camera.fov);
 			projectedY /= m_Camera.fov;
 
-			const Vector3 projected{ projectedX, projectedY, view.z };
-			temp.push_back(Vertex(NdcToScreen(projected), inMesh[meshIdx].vertices[vertexIdx].color));
+			const Vector4 projected{ projectedX, projectedY, view.z, 0 };
+			temp.push_back(Vertex_Out(NdcToScreen(projected), mesh[meshIdx].vertices[vertexIdx].uv, mesh[meshIdx].vertices[vertexIdx].color));
 		}
-		outMesh.emplace_back(Mesh{ temp,inMesh[meshIdx].indices,inMesh[meshIdx].primitiveTopology});
+		mesh[meshIdx].vertices_out = temp;
 	}
+}
+/// <summary>
+/// adds material to list and returns the id
+/// </summary>
+/// <param name="path"> Pathname of the texture </param>
+size_t dae::Renderer::AddMaterial(const std::string& path)
+{
+	m_Materials.push_back(Material{ Texture::LoadFromFile(path) });
+	return m_Materials.size() - 1;
 }
 
 

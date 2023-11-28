@@ -33,11 +33,12 @@ namespace dae
 		void Render();
 
 		bool SaveBufferToImage() const;
-		Vector3 NdcToScreen(Vector3 ndc) const;
+		Vector4 NdcToScreen(Vector4 ndc) const;
 
 		private:
 
-		void WorldToView(const std::vector<Mesh>& inVertices, std::vector<Mesh>& outVertices) const;
+		void WorldToScreen(std::vector<Mesh>& mesh) const;
+		size_t AddMaterial(const std::string& path); 
 		SDL_Window* m_pWindow{};
 
 		SDL_Surface* m_pFrontBuffer{ nullptr };
@@ -45,19 +46,11 @@ namespace dae
 		uint32_t* m_pBackBufferPixels{};
 
 		float* m_pDepthBufferPixels{};
+		std::vector<Material> m_Materials{};
 
-		
-		std::vector<Vertex> m_WorldVertices{
-			dae::Vertex{Vector3{-3.f, 3.f,-2.f},dae::colors::White},
-			dae::Vertex{Vector3{ 0.f, 3.f,-2.f},dae::colors::White},
-			dae::Vertex{Vector3{ 3.f, 3.f,-2.f},dae::colors::White},
-			dae::Vertex{Vector3{-3.f, 0.f,-2.f},dae::colors::White},
-			dae::Vertex{Vector3{ 0.f, 0.f,-2.f},dae::colors::White},
-			dae::Vertex{Vector3{ 3.f, 0.f,-2.f},dae::colors::White},
-			dae::Vertex{Vector3{-3.f,-3.f,-2.f},dae::colors::White},
-			dae::Vertex{Vector3{ 0.f,-3.f,-2.f},dae::colors::White},
-			dae::Vertex{Vector3{ 3.f,-3.f,-2.f},dae::colors::White}
+		std::vector<Mesh> m_Meshes{
 		};
+		
 
 		Camera m_Camera{};
 

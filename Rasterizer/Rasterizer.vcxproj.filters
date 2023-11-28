@@ -12,4 +12,8 @@
       <UniqueIdentifier>{f7261186-da77-45fd-b82b-18b1f4e4aa21}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="Resources\uv_grid.png" />
+    <Image Include="Resources\uv_grid_2.png" />
+  </ItemGroup>
 </Project>
