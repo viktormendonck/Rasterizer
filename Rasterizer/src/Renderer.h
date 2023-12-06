@@ -35,10 +35,20 @@ namespace dae
 		bool SaveBufferToImage() const;
 		Vector4 NdcToScreen(Vector4 ndc) const;
 
-		private:
+		void CycleRenderMode();
+		void CycleCullingMode();
+		void CycleShadingMode();
+		void ToggleSpin();
+		void ToggleNormalMap();
 
+		ColorRGB  PixelShading(const Vertex_Out& v, int matId);
+
+		private:
+			
+
+		
 		void WorldToScreen(std::vector<Mesh>& mesh) const;
-		size_t AddMaterial(const std::string& path); 
+		size_t AddMaterial(const std::string& diffuse, const std::string& normal, const std::string& specular, const std::string& gloss);
 		SDL_Window* m_pWindow{};
 
 		SDL_Surface* m_pFrontBuffer{ nullptr };
@@ -48,12 +58,32 @@ namespace dae
 		float* m_pDepthBufferPixels{};
 		std::vector<Material> m_Materials{};
 		std::vector<Mesh> m_Meshes{};
+
 	
 		enum class RenderMode {
-			standard, depth
+			standard, 
+			depth, 
 		};
+		enum class CullingMode {
+			partial,
+			complete,
+			off
+		};
+		enum class ShadingMode {
+			Combined,
+			ObservedArea,
+			Diffuse,
+			Specular	
+		};
+
+
+		bool m_isRotating{true};
+		bool m_UsingNormalMap{true};
+
+		CullingMode m_CurrentCullingMode{ CullingMode::complete };
 			
-		RenderMode m_CurrentRenderMode{ RenderMode::standard};
+		RenderMode m_CurrentRenderMode{ RenderMode::depth };
+		ShadingMode m_CurrentShadingMode{ ShadingMode::Combined };
 
 		Camera m_Camera{};
 

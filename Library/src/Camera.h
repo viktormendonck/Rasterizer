@@ -22,10 +22,10 @@ namespace dae
 		Vector3 origin{};
 		float fovAngle{90.f};
 		float fov{ tanf((fovAngle * TO_RADIANS) / 2.f) };
-		float speed{ 3.f };
+		float speed{ 10.f };
 		float mouseSpeed{ .5f };
-		float near{ 1 };
-		float far{ 1000 };
+		float near{ .1f };
+		float far{ 100.f };
 
 		Vector3 forward{Vector3::UnitZ};
 		Vector3 up{Vector3::UnitY};

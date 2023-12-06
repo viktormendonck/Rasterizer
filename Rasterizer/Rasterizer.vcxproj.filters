@@ -15,5 +15,9 @@
   <ItemGroup>
     <Image Include="Resources\tuktuk.png" />
     <Image Include="Resources\uv_grid_2.png" />
+    <Image Include="Resources\vehicle_diffuse.png" />
+    <Image Include="Resources\vehicle_gloss.png" />
+    <Image Include="Resources\vehicle_normal.png" />
+    <Image Include="Resources\vehicle_specular.png" />
   </ItemGroup>
 </Project>

@@ -8,6 +8,29 @@
 
 namespace dae
 {
+	namespace BRDF
+	{
+		static ColorRGB Lambert(float kd, const ColorRGB& cd)
+		{
+			return { (kd * cd) / dae::PI };
+		}
+
+		static ColorRGB Lambert(const ColorRGB& kd, const ColorRGB& cd)
+		{
+
+			return { (kd * cd) / dae::PI };
+		}
+
+		static ColorRGB Phong(ColorRGB ks, ColorRGB exp, const Vector3& l, const Vector3& v, const Vector3& n)
+		{
+			const Vector3 reflect{2.f * (n * Vector3::Dot(n,l)) - l };
+			const float cosA{ std::max(0.f,Vector3::Dot(reflect,v)) };
+			const dae::ColorRGB val{ ks * powf(cosA,exp.r) };
+
+			return ColorRGB{ val.r,val.g,val.b };
+		}
+		
+	}
 	namespace Utils
 	{
 		inline bool IsInTriangle(const Vector2& pos, const Vector3& p0, const Vector3& p1, const Vector3& p2, Vector3& weights)

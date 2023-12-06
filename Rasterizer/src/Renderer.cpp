@@ -27,49 +27,19 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
 	//Initialize Camera
-	m_Camera.Initialize(60.f, { .0f,5.0f,-30.f });
+	m_Camera.Initialize(45.f, { 0.f, 5.f, -64.f });
 	
 
 
 	
 	m_Meshes.push_back(
 		Mesh{
-			{},{},PrimitiveTopology::TriangleList,AddMaterial("Resources/tuktuk.png")
+			{},{},PrimitiveTopology::TriangleList,AddMaterial("Resources/vehicle_diffuse.png","Resources/vehicle_normal.png","Resources/vehicle_specular.png","Resources/vehicle_gloss.png")
 		}
 	);
 	
-	Utils::ParseOBJ("Resources/tuktuk.obj", m_Meshes[0].vertices,m_Meshes[0].indices);
+	Utils::ParseOBJ("Resources/vehicle.obj", m_Meshes[0].vertices,m_Meshes[0].indices);
 
-	//m_Meshes.push_back(
-	//	Mesh{
-	//	{
-	//		Vertex{{-3.f, 3.f,-2.f},{0.f,0.f}},
-	//		Vertex{{ 0.f, 3.f,-2.f},{.5f,0.f}},
-	//		Vertex{{ 3.f, 3.f,-2.f},{1.f,0.f}},
-	//		Vertex{{-3.f, 0.f,-2.f},{0.f,.5f}},
-	//		Vertex{{ 0.f, 0.f,-2.f},{.5f,.5f}},
-	//		Vertex{{ 3.f, 0.f,-2.f},{1.f,.5f}},
-	//		Vertex{{-3.f,-3.f,-2.f},{0.f,1.f}},
-	//		Vertex{{ 0.f,-3.f,-2.f},{.5f,1.f}},
-	//		Vertex{{ 3.f,-3.f,-2.f},{1.f,1.f}}
-	//	},
-	//
-	//	//{3,0,4,1,5,2,2,6,6,3,7,4,8,5}, 
-	//	//PrimitiveTopology::TriangleStrip
-	//
-	//	{
-	//		3,0,1,	1,4,3,	4,1,2,
-	//		2,5,4,	6,3,4,	4,7,6,
-	//		7,4,5,	5,8,7
-	//	},
-	//	PrimitiveTopology::TriangleList,
-	//
-	//	AddMaterial("Resources/uv_grid_2.png"),
-	//	{},
-	//	//Matrix{Matrix::CreateTranslation(Vector3{0,0,0})}
-	//
-	//	}
-	//);
 }
 
 Renderer::~Renderer()
@@ -77,7 +47,10 @@ Renderer::~Renderer()
 	delete[] m_pDepthBufferPixels;
 	for (const Material& mat : m_Materials)
 	{
-		delete mat.pTexture;
+		delete mat.pDiffuse;
+		delete mat.pGloss;
+		delete mat.pNormal;
+		delete mat.pSpecular;
 	}
 }
 
@@ -85,7 +58,9 @@ void Renderer::Update(Timer* pTimer)
 {
 	const float deltaTime{ pTimer->GetElapsed() };
 	m_Camera.Update(pTimer);
-	m_Meshes[0].worldMatrix *= Matrix::CreateRotationY(deltaTime * PI);
+	if (m_isRotating) {
+		m_Meshes[0].worldMatrix *= Matrix::CreateRotationY(deltaTime * PI_DIV_4);
+	}
 }
 
 void Renderer::Render()
@@ -138,12 +113,38 @@ void Renderer::Render()
 			const Vertex_Out& v2 = screenMesh.vertices_out[screenMesh.indices[idx2]];
 
 			//check if tri is behind you
-			if (v0.position.z < 0 || v0.position.z > 1 ||
-				v1.position.z < 0 || v1.position.z > 1 ||
-				v2.position.z < 0 || v2.position.z > 1)
+			if (v0.position.z < 0 || v0.position.z > 1        ||
+				v1.position.z < 0 || v1.position.z > 1        ||
+				v2.position.z < 0 || v2.position.z > 1
+				)
 			{
 				continue;
 			}
+			switch (m_CurrentCullingMode)
+			{
+			case dae::Renderer::CullingMode::partial:
+				if ((v0.position.x < 0 || v0.position.x > m_Width || v0.position.y < 0 || v0.position.y > m_Height) &&
+					(v1.position.x < 0 || v1.position.x > m_Width || v1.position.y < 0 || v1.position.y > m_Height) &&
+					(v2.position.x < 0 || v2.position.x > m_Width || v2.position.y < 0 || v2.position.y > m_Height))
+				{
+					continue;
+				}
+				break;
+			case dae::Renderer::CullingMode::complete:
+				if (v0.position.x < 0 || v0.position.x > m_Width ||
+					v1.position.x < 0 || v1.position.x > m_Width ||
+					v2.position.x < 0 || v2.position.x > m_Width ||
+					v0.position.y < 0 || v0.position.y > m_Height ||
+					v1.position.y < 0 || v1.position.y > m_Height ||
+					v2.position.y < 0 || v2.position.y > m_Height) 
+				{
+					continue;
+				}
+				break;
+			case dae::Renderer::CullingMode::off:
+				break;
+			}
+			
 
 
 			//get bounding boxes
@@ -190,34 +191,57 @@ void Renderer::Render()
 								  1.f / v2.position.w * weights.z
 								  )
 						};
-
+						float nonLinearHitDepth{
+							1.f / (
+								1.f / v0.position.z * weights.x +
+								1.f / v1.position.z * weights.y +
+								1.f / v2.position.z * weights.z
+								)
+						};
 						if (m_pDepthBufferPixels[pixelIdx] < linearHitDepth) { continue; }
 						else { m_pDepthBufferPixels[pixelIdx] = linearHitDepth; }
 						switch (m_CurrentRenderMode) {
 						case(RenderMode::standard): {
-
+#pragma region Interpolation
+							const Vector4 pos{
+								static_cast<float>(px),
+								static_cast<float>(py),
+								nonLinearHitDepth,
+								linearHitDepth
+							};
 							const Vector2 uv{ (
 							v0.uv / v0.position.w * weights.x +
 							v1.uv / v1.position.w * weights.y +
 							v2.uv / v2.position.w * weights.z) * linearHitDepth
 							};
-							finalColor = m_Materials[screenMesh.materialId].pTexture->Sample(uv);
+							const Vector3 normal{ (
+							v0.normal / v0.position.w * weights.x +
+							v1.normal / v1.position.w * weights.y +
+							v2.normal / v2.position.w * weights.z) * linearHitDepth
+							};
+							const Vector3 tangent{ (
+							v0.tangent / v0.position.w * weights.x +
+							v1.tangent / v1.position.w * weights.y +
+							v2.tangent / v2.position.w * weights.z) * linearHitDepth
+							};
+							const Vector3 viewDir{ (
+							v0.viewDirection / v0.position.w * weights.x +
+							v1.viewDirection / v1.position.w * weights.y +
+							v2.viewDirection / v2.position.w * weights.z) * linearHitDepth
+							};
+#pragma endregion
+							const Vertex_Out out(pos,uv,normal,tangent,viewDir,finalColor);
+							finalColor = PixelShading(out,screenMesh.materialId);
 							finalColor.MaxToOne();
 							break; }
-						case(RenderMode::depth):
-							float nonLinearHitDepth{
-								1.f / (
-									  1.f / v0.position.z * weights.x +
-									  1.f / v1.position.z * weights.y +
-									  1.f / v2.position.z * weights.z
-									  )
-							};
-							nonLinearHitDepth = Utils::Remap(0.995f,1.f,0.f,1.f, nonLinearHitDepth);
+
+						case(RenderMode::depth): {
+							
+							nonLinearHitDepth = Utils::Remap(0.995f, 1.f, 0.f, 1.f, nonLinearHitDepth);
 							finalColor = ColorRGB{ nonLinearHitDepth,nonLinearHitDepth,nonLinearHitDepth };
 							finalColor.MaxToOne();
-							break;
+							break; }
 						}
-
 						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
 							static_cast<uint8_t>(finalColor.r * 255),
 							static_cast<uint8_t>(finalColor.g * 255),
@@ -240,6 +264,73 @@ Vector4 dae::Renderer::NdcToScreen(Vector4 ndc) const
 	ndc.y = (1 - ndc.y) / 2 * m_Height;
 	return ndc;
 }
+
+
+
+ColorRGB dae::Renderer::PixelShading(const Vertex_Out& v, int matId)
+{
+	const DirectionalLight light = {
+				{ .577f, -.577f, .577f },
+				ColorRGB{1,1,1},
+				7.f
+	};
+	const ColorRGB ambientColor{ 0.03f,0.03f,0.03f };
+	const float shine{ 25.f };
+	
+	const ColorRGB sampledNormal{ m_Materials[matId].pNormal->Sample(v.uv) };
+	const ColorRGB sampledDiffuse{ m_Materials[matId].pDiffuse->Sample(v.uv) };
+	const ColorRGB sampledGloss{ m_Materials[matId].pGloss->Sample(v.uv) };
+
+	const Vector3 biNormal{Vector3::Cross(v.normal,v.tangent)};
+	const Matrix tangentAxis{v.tangent,biNormal,v.normal,Vector3::Zero };
+	
+	
+	Vector3 sampledNormalVector{ sampledNormal.r,sampledNormal.g,sampledNormal.b };
+	Vector3 normal{ sampledNormalVector * 2.f - Vector3{1,1,1} };
+	if (m_UsingNormalMap) {
+		normal = tangentAxis.TransformPoint(normal).Normalized();
+	}
+	else 
+	{
+		normal = v.normal;
+	}
+	const ColorRGB diffuse{ dae::BRDF::Lambert(7.f,sampledDiffuse) };
+	const float observedArea{ Vector3::Dot(normal, -light.dir) };
+	if (observedArea <= 0) {
+		return colors::Black;
+	}
+
+
+
+	const ColorRGB gloss{ sampledGloss * shine };
+
+	const ColorRGB specular{ dae::BRDF::Phong(
+		m_Materials[matId].pSpecular->Sample(v.uv),
+		gloss,
+		light.dir,
+		v.viewDirection,
+		normal
+	) };
+
+	switch (m_CurrentShadingMode)
+	{
+	case dae::Renderer::ShadingMode::Combined:
+		return (light.color * light.intensity) * (ambientColor + diffuse + specular) * observedArea;
+		break;
+	case dae::Renderer::ShadingMode::ObservedArea:
+		return ColorRGB{ observedArea,observedArea,observedArea };
+		break;
+	case dae::Renderer::ShadingMode::Diffuse:
+		return (light.color * light.intensity) * diffuse * observedArea;
+		break;
+	case dae::Renderer::ShadingMode::Specular:
+		return specular;
+		break;
+	}
+	
+	
+}
+
 
 bool Renderer::SaveBufferToImage() const
 {
@@ -266,8 +357,16 @@ void dae::Renderer::WorldToScreen(std::vector<Mesh>& mesh) const
 			projectedView.x /= projectedView.w;
 			projectedView.y /= projectedView.w;
 			projectedView.z /= projectedView.w;
+			const Vector3 normal{ mesh[meshIdx].worldMatrix.TransformVector(mesh[meshIdx].vertices[vertexIdx].normal).Normalized() };
+			const Vector3 tangent{ mesh[meshIdx].worldMatrix.TransformVector(mesh[meshIdx].vertices[vertexIdx].tangent).Normalized() };
+			const Vector3 viewDir{ (mesh[meshIdx].worldMatrix.TransformPoint(mesh[meshIdx].vertices[vertexIdx].position) - m_Camera.origin).Normalized() };
 
-			temp.push_back(Vertex_Out(NdcToScreen(projectedView), mesh[meshIdx].vertices[vertexIdx].uv, mesh[meshIdx].vertices[vertexIdx].normal, mesh[meshIdx].vertices[vertexIdx].tangent, mesh[meshIdx].vertices[vertexIdx].viewDirection,mesh[meshIdx].vertices[vertexIdx].color));
+			temp.push_back(Vertex_Out(NdcToScreen(projectedView), 
+								mesh[meshIdx].vertices[vertexIdx].uv, 
+								normal,	
+								tangent, 
+								viewDir,
+								mesh[meshIdx].vertices[vertexIdx].color));
 		}
 		mesh[meshIdx].vertices_out = temp;
 	}
@@ -276,12 +375,48 @@ void dae::Renderer::WorldToScreen(std::vector<Mesh>& mesh) const
 /// adds material to list and returns the id
 /// </summary>
 /// <param name="path"> Pathname of the texture </param>
-size_t dae::Renderer::AddMaterial(const std::string& path)
+size_t dae::Renderer::AddMaterial(const std::string& diffuse , const std::string& normal , const std::string& specular ,const std::string& gloss)
 {
-	m_Materials.push_back(Material{ Texture::LoadFromFile(path) });
+	Texture* diffuseTexture{ nullptr };
+	if (!diffuse.empty()) diffuseTexture = Texture::LoadFromFile(diffuse);
+
+	Texture* normalTexture{ nullptr };
+	if (!normal.empty()) normalTexture = Texture::LoadFromFile(normal);
+
+	Texture* specularTexture{ nullptr };
+	if (!specular.empty()) specularTexture = Texture::LoadFromFile(specular);
+
+	Texture* glossTexture{ nullptr };
+	if (!gloss.empty()) glossTexture = Texture::LoadFromFile(gloss);
+
+
+	m_Materials.push_back(Material{ diffuseTexture, normalTexture, specularTexture, glossTexture });
 	return m_Materials.size() - 1;
 }
 
+void dae::Renderer::CycleRenderMode()
+{
+	m_CurrentRenderMode = static_cast<RenderMode>((static_cast<int>(m_CurrentRenderMode) + 1) % 2);
+}
 
+void dae::Renderer::CycleCullingMode()
+{
+	m_CurrentCullingMode = static_cast<CullingMode>((static_cast<int>(m_CurrentCullingMode) + 1) % 3);
+}
+
+void dae::Renderer::CycleShadingMode()
+{
+	m_CurrentShadingMode = static_cast<ShadingMode>((static_cast<int>(m_CurrentShadingMode) + 1) % 4);
+}
+
+void dae::Renderer::ToggleSpin()
+{
+	m_isRotating = !m_isRotating;
+}
+
+void dae::Renderer::ToggleNormalMap()
+{
+	m_UsingNormalMap = !m_UsingNormalMap;
+}
 
 

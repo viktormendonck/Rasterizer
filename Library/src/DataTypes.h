@@ -12,7 +12,7 @@ namespace dae
 		Vector3 normal{}; //W4
 		Vector3 tangent{}; //W4
 		Vector3 viewDirection{}; //W4
-		ColorRGB color{colors::White};
+		ColorRGB color{ ColorRGB{170, 122, 230} };
 	};
 
 	struct Vertex_Out
@@ -31,6 +31,13 @@ namespace dae
 		TriangleStrip
 	};
 
+	struct DirectionalLight 
+	{
+		Vector3 dir{};
+		ColorRGB color{};
+		float intensity{};
+	};
+
 	struct Mesh
 	{
 		std::vector<Vertex> vertices{};
@@ -44,7 +51,10 @@ namespace dae
 	};
 	struct Material
 	{
-		Texture* pTexture;
+		Texture* pDiffuse;
+		Texture* pNormal;
+		Texture* pSpecular;
+		Texture* pGloss;
 
 	};
 
