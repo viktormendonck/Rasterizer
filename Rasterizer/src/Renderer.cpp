@@ -193,9 +193,9 @@ void Renderer::Render()
 						};
 						float nonLinearHitDepth{
 							1.f / (
-								1.f / v0.position.z * weights.x +
-								1.f / v1.position.z * weights.y +
-								1.f / v2.position.z * weights.z
+								(1.f / v0.position.z) * weights.x +
+								(1.f / v1.position.z) * weights.y +
+								(1.f / v2.position.z) * weights.z
 								)
 						};
 						if (m_pDepthBufferPixels[pixelIdx] < linearHitDepth) { continue; }
@@ -214,20 +214,20 @@ void Renderer::Render()
 							v1.uv / v1.position.w * weights.y +
 							v2.uv / v2.position.w * weights.z) * linearHitDepth
 							};
-							const Vector3 normal{ (
+							const Vector3 normal{ ((
 							v0.normal / v0.position.w * weights.x +
 							v1.normal / v1.position.w * weights.y +
-							v2.normal / v2.position.w * weights.z) * linearHitDepth
+							v2.normal / v2.position.w * weights.z) * linearHitDepth).Normalized()
 							};
-							const Vector3 tangent{ (
+							const Vector3 tangent{ ((
 							v0.tangent / v0.position.w * weights.x +
 							v1.tangent / v1.position.w * weights.y +
-							v2.tangent / v2.position.w * weights.z) * linearHitDepth
+							v2.tangent / v2.position.w * weights.z) * linearHitDepth).Normalized()
 							};
-							const Vector3 viewDir{ (
+							const Vector3 viewDir{ ((
 							v0.viewDirection / v0.position.w * weights.x +
 							v1.viewDirection / v1.position.w * weights.y +
-							v2.viewDirection / v2.position.w * weights.z) * linearHitDepth
+							v2.viewDirection / v2.position.w * weights.z) * linearHitDepth).Normalized()
 							};
 #pragma endregion
 							const Vertex_Out out(pos,uv,normal,tangent,viewDir,finalColor);
@@ -267,7 +267,7 @@ Vector4 dae::Renderer::NdcToScreen(Vector4 ndc) const
 
 
 
-ColorRGB dae::Renderer::PixelShading(const Vertex_Out& v, int matId)
+ColorRGB dae::Renderer::PixelShading(const Vertex_Out& vert, int matId)
 {
 	const DirectionalLight light = {
 				{ .577f, -.577f, .577f },
@@ -277,51 +277,56 @@ ColorRGB dae::Renderer::PixelShading(const Vertex_Out& v, int matId)
 	const ColorRGB ambientColor{ 0.03f,0.03f,0.03f };
 	const float shine{ 25.f };
 	
-	const ColorRGB sampledNormal{ m_Materials[matId].pNormal->Sample(v.uv) };
-	const ColorRGB sampledDiffuse{ m_Materials[matId].pDiffuse->Sample(v.uv) };
-	const ColorRGB sampledGloss{ m_Materials[matId].pGloss->Sample(v.uv) };
-
-	const Vector3 biNormal{Vector3::Cross(v.normal,v.tangent)};
-	const Matrix tangentAxis{v.tangent,biNormal,v.normal,Vector3::Zero };
+	const ColorRGB sampledNormal{ m_Materials[matId].pNormal->Sample(vert.uv) };
+	const ColorRGB sampledDiffuse{ m_Materials[matId].pDiffuse->Sample(vert.uv) };
+	const ColorRGB sampledGloss{ m_Materials[matId].pGloss->Sample(vert.uv) };
+	const ColorRGB sampledSpecular{ m_Materials[matId].pSpecular->Sample(vert.uv) };
+	
+	const Vector3 biNormal{Vector3::Cross(vert.normal,vert.tangent)};
+	const Matrix tangentAxis{vert.tangent,biNormal,vert.normal,Vector3::Zero };
 	
 	
 	Vector3 sampledNormalVector{ sampledNormal.r,sampledNormal.g,sampledNormal.b };
 	Vector3 normal{ sampledNormalVector * 2.f - Vector3{1,1,1} };
-	if (m_UsingNormalMap) {
-		normal = tangentAxis.TransformPoint(normal).Normalized();
-	}
-	else 
+
+	if (m_UsingNormalMap)
 	{
-		normal = v.normal;
+		normal = tangentAxis.TransformPoint(normal.Normalized()).Normalized();
 	}
-	const ColorRGB diffuse{ dae::BRDF::Lambert(7.f,sampledDiffuse) };
+	else
+	{
+		normal = vert.normal;
+	}
+	
+	const ColorRGB diffuse{ dae::BRDF::Lambert(7,sampledDiffuse) };
+
 	const float observedArea{ Vector3::Dot(normal, -light.dir) };
-	if (observedArea <= 0) {
+	if (observedArea < 0) {
 		return colors::Black;
 	}
-
-
-
+	
+	
+	
 	const ColorRGB gloss{ sampledGloss * shine };
-
+	
 	const ColorRGB specular{ dae::BRDF::Phong(
-		m_Materials[matId].pSpecular->Sample(v.uv),
+		m_Materials[matId].pSpecular->Sample(vert.uv),
 		gloss,
 		light.dir,
-		v.viewDirection,
+		vert.viewDirection,
 		normal
 	) };
-
+	
 	switch (m_CurrentShadingMode)
 	{
 	case dae::Renderer::ShadingMode::Combined:
-		return (light.color * light.intensity) * (ambientColor + diffuse + specular) * observedArea;
+		return ((light.color  * diffuse) +ambientColor + specular) * observedArea;
 		break;
 	case dae::Renderer::ShadingMode::ObservedArea:
 		return ColorRGB{ observedArea,observedArea,observedArea };
 		break;
 	case dae::Renderer::ShadingMode::Diffuse:
-		return (light.color * light.intensity) * diffuse * observedArea;
+		return (light.color ) * diffuse * observedArea;
 		break;
 	case dae::Renderer::ShadingMode::Specular:
 		return specular;

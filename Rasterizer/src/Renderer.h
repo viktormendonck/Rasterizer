@@ -82,7 +82,7 @@ namespace dae
 
 		CullingMode m_CurrentCullingMode{ CullingMode::complete };
 			
-		RenderMode m_CurrentRenderMode{ RenderMode::depth };
+		RenderMode m_CurrentRenderMode{ RenderMode::standard };
 		ShadingMode m_CurrentShadingMode{ ShadingMode::Combined };
 
 		Camera m_Camera{};
