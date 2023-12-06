@@ -69,8 +69,11 @@ int main(int argc, char* args[])
 				case SDL_SCANCODE_X:
 					takeScreenshot = true;
 					break;
-				case SDL_SCANCODE_F4:
+				case SDL_SCANCODE_F3:
 					pRenderer->CycleCullingMode();
+					break;
+				case SDL_SCANCODE_F4:
+					pRenderer->CycleRenderMode();
 					break;
 				case SDL_SCANCODE_F5:
 					pRenderer->ToggleSpin();

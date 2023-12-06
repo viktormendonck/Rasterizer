@@ -191,7 +191,7 @@ void Renderer::Render()
 								  1.f / v2.position.w * weights.z
 								  )
 						};
-						float nonLinearHitDepth{
+						const float nonLinearHitDepth{
 							1.f / (
 								(1.f / v0.position.z) * weights.x +
 								(1.f / v1.position.z) * weights.y +
@@ -236,9 +236,10 @@ void Renderer::Render()
 							break; }
 
 						case(RenderMode::depth): {
-							
-							nonLinearHitDepth = Utils::Remap(0.995f, 1.f, 0.f, 1.f, nonLinearHitDepth);
-							finalColor = ColorRGB{ nonLinearHitDepth,nonLinearHitDepth,nonLinearHitDepth };
+							const float remapMin{ 0.995f };
+							const float remapMax{ 1.0f };
+							const float depthColor = (Clamp(nonLinearHitDepth, remapMin, remapMax) - remapMin) / (remapMax - remapMin);
+							finalColor = ColorRGB{ depthColor,depthColor,depthColor };
 							finalColor.MaxToOne();
 							break; }
 						}
@@ -272,7 +273,6 @@ ColorRGB dae::Renderer::PixelShading(const Vertex_Out& vert, int matId)
 	const DirectionalLight light = {
 				{ .577f, -.577f, .577f },
 				ColorRGB{1,1,1},
-				7.f
 	};
 	const ColorRGB ambientColor{ 0.03f,0.03f,0.03f };
 	const float shine{ 25.f };
@@ -423,5 +423,7 @@ void dae::Renderer::ToggleNormalMap()
 {
 	m_UsingNormalMap = !m_UsingNormalMap;
 }
+
+
 
 

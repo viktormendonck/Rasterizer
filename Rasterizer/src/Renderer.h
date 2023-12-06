@@ -80,8 +80,7 @@ namespace dae
 		bool m_isRotating{true};
 		bool m_UsingNormalMap{true};
 
-		CullingMode m_CurrentCullingMode{ CullingMode::complete };
-			
+		CullingMode m_CurrentCullingMode{ CullingMode::complete };	
 		RenderMode m_CurrentRenderMode{ RenderMode::standard };
 		ShadingMode m_CurrentShadingMode{ ShadingMode::Combined };
 
